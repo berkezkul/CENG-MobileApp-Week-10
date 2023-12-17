@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import android.app.ProgressDialog;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -19,6 +20,7 @@ import android.widget.Toast;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -146,14 +148,32 @@ public class MainActivity extends AppCompatActivity {
 
     class DownloadTask extends AsyncTask<String, Integer, Bitmap>{
 
+
+        ProgressDialog PD;
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            PD = new ProgressDialog(MainActivity.this);
+            PD.setMax(100);
+            PD.setIndeterminate(false);
+            PD.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            PD.setTitle("Downloading");
+            PD.setMessage("Please wait..");
+            PD.show();
+        }
+
         @Override
         protected Bitmap doInBackground(String... urls) {
             String fileName = "temp.jpg";
+            File path = (Environment.getExternalStoragePublicDirectory
+                    (Environment.DIRECTORY_DOWNLOADS));
+            path.mkdirs();
+
             String imagePath = (Environment.getExternalStoragePublicDirectory
                     (Environment.DIRECTORY_DOWNLOADS)).toString()
                     + "/" + fileName;
-            downloadFile(urls[0],imagePath + "/" + fileName);
-            return scaleBitmap(imagePath + "/" + fileName);
+            downloadFile(urls[0],imagePath);
+            return scaleBitmap(imagePath);
         }
 
         @Override
@@ -171,5 +191,48 @@ public class MainActivity extends AppCompatActivity {
         int H = (int) ( (h*W)/w);
         Bitmap bitmap = Bitmap.createScaledBitmap(image, W, H, false);
         return bitmap;
+    }
+
+    class DownloadRunnable implements Runnable{
+        String url;
+
+        public DownloadRunnable(String url) {
+            this.url = url;
+        }
+
+        @Override
+        public void run() {
+            String fileName = "temp.jpg";
+            String imagePath = (Environment.getExternalStoragePublicDirectory
+                    (Environment.DIRECTORY_DOWNLOADS)).toString()
+                    + "/" + fileName;
+            downloadFile(url,imagePath);
+            Bitmap bitmap = scaleBitmap(imagePath);
+            runOnUiThread(new UpdateBitmap(bitmap));
+        }
+
+        private Bitmap scaleBitmap(String imagePath) {
+            Bitmap image = BitmapFactory.decodeFile(imagePath);
+            float w = image.getWidth();
+            float h = image.getHeight();
+            int W = 400;
+            int H = (int) ( (h*W)/w);
+            Bitmap bitmap = Bitmap.createScaledBitmap(image, W, H, false);
+            return bitmap;
+        }
+    }
+
+
+    class UpdateBitmap implements Runnable{
+        Bitmap bitmap;
+
+        public UpdateBitmap(Bitmap bitmap) {
+            this.bitmap = bitmap;
+        }
+
+        @Override
+        public void run() {
+            imgView.setImageBitmap(bitmap);
+        }
     }
 }
